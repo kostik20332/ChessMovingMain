@@ -44,6 +44,7 @@ public class ChessMovingMain : MonoBehaviour
     private float startingPosElephant;
     private string posString;
     private string posString2;
+    private string posString3;
     public bool pawnSelected;
     public bool chessSelected;
     public bool rookSelected;
@@ -59,6 +60,7 @@ public class ChessMovingMain : MonoBehaviour
     private bool thisAllowedToMove;
     public static bool isWhiteMove = true;
     public bool square;
+    public static bool pawnRedIndicatorsDelete = false;
     private Moving script;
     private Detectors script2;
     public Material[] materialArray;
@@ -66,7 +68,7 @@ public class ChessMovingMain : MonoBehaviour
     void Awake()
     {
         _camera = GetComponent<Camera>();
-        for (int i = 1; i >-2; i -= 2)
+        for (int i = 1; i > -2; i -= 2)
         {
             chessColour = i;
             //спавн пешек
@@ -102,7 +104,7 @@ public class ChessMovingMain : MonoBehaviour
     void PawnIndicatorsSpawn(int pawnPosition)
     {
         chessOnTheWay = false;
-        for(int z = 1; z < 3; z++)
+        for (int z = 1; z < 3; z++)
         {
             if (script.isBlack)
             {
@@ -110,13 +112,13 @@ public class ChessMovingMain : MonoBehaviour
             }
             if (!chessOnTheWay)
             {
-                if(z == 2)
+                if (z == 2)
                 {
                     posAllowedFirstMotion = pawnPosition - z * directionChanging;
                     posString2 = posAllowedFirstMotion.ToString();
                     detector = GameObject.FindGameObjectWithTag($"{posString2}");
                     script2 = detector.GetComponent<Detectors>();//получаем доступ к скрипту, потом желательно оптимизироать эту штуку
-                    script2.SquareIndicatorsOn();
+                    script2.PawnSquareIndicatorsOn();
                 }
                 else
                 {
@@ -124,7 +126,7 @@ public class ChessMovingMain : MonoBehaviour
                     posString = posAllowed.ToString();
                     detector = GameObject.FindGameObjectWithTag($"{posString}");
                     script2 = detector.GetComponent<Detectors>();//получаем доступ к скрипту, потом желательно оптимизироать эту штуку
-                    script2.SquareIndicatorsOn();
+                    script2.PawnSquareIndicatorsOn();
                 }
             }
             else
@@ -148,7 +150,49 @@ public class ChessMovingMain : MonoBehaviour
         posString = posAllowed.ToString();
         detector = GameObject.FindGameObjectWithTag($"{posString}");
         script2 = detector.GetComponent<Detectors>();//получаем доступ к скрипту, потом желательно оптимизироать эту штуку
-        script2.SquareIndicatorsOn();
+        script2.PawnSquareIndicatorsOn();
+        directionChanging = -1;
+    }
+
+    void PawnRedIndicatorsSpawn(int pawnPosition)
+    {
+        pawnRedIndicatorsDelete = false;//отключение переменной с помощью которой удаляем красные индикаторы пешек
+        chessOnTheWay = false;
+        for (int z = 0, x = 1; z < 2; z++, x -= 2)
+        {
+            if (script.isBlack)
+            {
+                directionChanging = 1;
+            }
+            posAllowed = pawnPosition - (11 - 2 * z) * directionChanging * x;
+            if (posAllowed > 10 && posAllowed < 89)
+            {
+                if (z == 0)
+                {
+                    posString2 = posAllowed.ToString();
+                    detector = GameObject.FindGameObjectWithTag($"{posString2}");
+                }
+                else
+                {
+                    posString3 = posAllowed.ToString();
+                    detector = GameObject.FindGameObjectWithTag($"{posString3}");
+                }
+                script2 = detector.GetComponent<Detectors>();//получаем доступ к скрипту, потом желательно оптимизироать эту штуку
+                chessOnCell2 = script2.chessOnCell;
+                if (chessOnCell2)
+                {
+                    if (isWhiteMove == script2.isChessColourBlack())
+                    {
+                        script2.PawnRedSquareIndicatorsOn();
+                    }
+                }
+                else
+                {
+                    chessOnTheWay = false;
+                    break;
+                }
+            }
+        }
         directionChanging = -1;
     }
 
@@ -249,7 +293,7 @@ public class ChessMovingMain : MonoBehaviour
     {
         for (int i = 1; i < 9; i++)
         {
-            for(int j = 1; j < 9; j++)
+            for (int j = 1; j < 9; j++)
             {
                 detectorNumber = 10 * i + j;
                 posString = detectorNumber.ToString();
@@ -304,7 +348,7 @@ public class ChessMovingMain : MonoBehaviour
         {
             HorseIndicators();
         }
-        value = pos -19;
+        value = pos - 19;
         value2 = pos % 10;
         if (value > 10 && value < 89 && value2 < 8)
         {
@@ -328,7 +372,7 @@ public class ChessMovingMain : MonoBehaviour
         visibleSquares = true;
         chessOnTheWay = false;
         value = pos + 11;
-        for(int v = value;v < 89; v += 11)
+        for (int v = value; v < 89; v += 11)
         {
             value2 = v % 10;
             if (!chessOnTheWay && value2 < 9)
@@ -573,7 +617,7 @@ public class ChessMovingMain : MonoBehaviour
     void KingIndicatorsSpawn()
     {
         visibleSquares = true;
-        for (int i = -1; i < 2; i+= 2)
+        for (int i = -1; i < 2; i += 2)
         {
             value = pos + i;
             value2 = value % 10;
@@ -634,7 +678,7 @@ public class ChessMovingMain : MonoBehaviour
         }
     }
 
-    int RookMoving(GameObject hitObject)
+    int longWalkChessMoving(GameObject hitObject, GameObject chess)
     {
         posString = posAllowed.ToString();
         if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
@@ -646,48 +690,44 @@ public class ChessMovingMain : MonoBehaviour
             if (!chessOnCell2 && thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
             {
                 isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                script.Relocate(hitObject.transform.position.x, rook.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
+                script.Relocate(hitObject.transform.position.x, chess.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
                 rookSelected = false;
+                elephantSelected = false;
+                queenSelected = false;
                 chessSelected = false;
                 posAllowed = 0;
-                indicator = 1;
                 return 1;
-                
             }
             else if (chessOnCell2 && chessOnTheWayCounter < 2)
             {
-                indicator = 2;
                 if (isWhiteMove == script2.isChessColourBlack())
                 {
                     script2.chessDeleting();
                     isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                    script.Relocate(hitObject.transform.position.x, rook.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
+                    script.Relocate(hitObject.transform.position.x, chess.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
                     rookSelected = false;
+                    elephantSelected = false;
+                    queenSelected = false;
                     chessSelected = false;
-                    indicator = 3;
                     return 1;
                 }
             }
             else
             {
-                indicator = 4;
                 chessOnTheWay = false;
                 return 1;
             }
         }
         else
         {
-            indicator2 = 5;
             cellIndicator = GameObject.FindGameObjectWithTag($"{posString}");
             script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
             if (script2 != null)
             {
-                indicator2 = 6;
                 chessOnCell2 = script2.chessOnCell;
                 if (chessOnCell2)
                 {
-                    indicator2 = 7;
-                    chessOnTheWayCounter++;
+                    return 1;
                 }
             }
         }
@@ -696,6 +736,7 @@ public class ChessMovingMain : MonoBehaviour
 
     void HorseMoving(GameObject hitObject)
     {
+        posString = value.ToString();
         if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку по правилам
         {
             cellIndicator = hitObject;
@@ -723,9 +764,10 @@ public class ChessMovingMain : MonoBehaviour
         }
     }
 
-    int ElephantMoving(GameObject hitObject)
+    void KingMoving(GameObject hitObject)
     {
-        if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
+        posString = value.ToString();
+        if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку по правилам
         {
             cellIndicator = hitObject;
             script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
@@ -734,46 +776,22 @@ public class ChessMovingMain : MonoBehaviour
             if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
             {
                 isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                script.Relocate(hitObject.transform.position.x, elephant.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                elephantSelected = false;
+                script.Relocate(hitObject.transform.position.x, king.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
+                kingSelected = false;
                 chessSelected = false;
-                posAllowed = 0;
-                return 1;
-
             }
-            else if (chessOnCell2 && chessOnTheWayCounter < 1)
+            else if (chessOnCell2)
             {
-                
                 if (isWhiteMove == script2.isChessColourBlack())
                 {
                     script2.chessDeleting();
                     isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                    script.Relocate(hitObject.transform.position.x, elephant.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                    elephantSelected = false;
+                    script.Relocate(hitObject.transform.position.x, king.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
+                    kingSelected = false;
                     chessSelected = false;
-                    return 1;
-                }
-            }
-            else
-            {
-                chessOnTheWay = false;
-                return 1;
-            }
-        }
-        else
-        {
-            cellIndicator = GameObject.FindGameObjectWithTag($"{posString}");
-            script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-            if (script2 != null)
-            {
-                chessOnCell2 = script2.chessOnCell;
-                if (chessOnCell2)
-                {
-                    chessOnTheWayCounter++;
                 }
             }
         }
-        return 0;
     }
 
     void ChessActivation(GameObject hitObject)
@@ -789,6 +807,7 @@ public class ChessMovingMain : MonoBehaviour
                 pawnSelected = true;//помечаем, что выбрали пешку
                 chessSelected = true;
                 pawn.GetComponent<Renderer>().material = materialArray[1];
+                PawnRedIndicatorsSpawn(pos);
                 if (hitObject.tag == "pawn")
                 {
                     PawnIndicatorsSpawn(pos);
@@ -884,11 +903,12 @@ public class ChessMovingMain : MonoBehaviour
                         pawn = hitObject;//помещаем в переменную пешки выбранную пешку
                         script = pawn.GetComponent<Moving>();//получаем доступ к скрипту
                         pos = script.posOfChess;//получаем информацию о позиции выбранной пешки
-                        if(!script.isBlack == isWhiteMove)
+                        if (!script.isBlack == isWhiteMove)
                         {
                             pawnSelected = true;//помечаем, что выбрали пешку
                             chessSelected = true;
                             pawn.GetComponent<Renderer>().material = materialArray[1];
+                            PawnRedIndicatorsSpawn(pos);
                             if (hitObject.tag == "pawn")
                             {
                                 PawnIndicatorsSpawn(pos);
@@ -967,7 +987,7 @@ public class ChessMovingMain : MonoBehaviour
                 }
             }
         }
-        else if(pawnSelected == true && chessSelected == true)//действия если выбрали пешку
+        else if (pawnSelected == true && chessSelected == true)//действия если выбрали пешку
         {
             if (Input.GetMouseButtonDown(0))//ждём нажатия на экран
             {
@@ -985,7 +1005,7 @@ public class ChessMovingMain : MonoBehaviour
                 if (Physics.Raycast(ray, out hit))//метод возвращает true или false и передаёт информацию о луче в переменную hit
                 {
                     GameObject hitObject = hit.transform.gameObject;//помещаем в переменную hitObject объект в который попали
-                    if (hitObject.tag == posString || hitObject.tag == posString2)//проверяем разрешён ли ход на нажатую клетку
+                    if (hitObject.tag == posString || hitObject.tag == posString2 || hitObject.tag == posString3)//проверяем разрешён ли ход на нажатую клетку
                     {
                         cellIndicator = hitObject;
                         script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
@@ -1001,12 +1021,24 @@ public class ChessMovingMain : MonoBehaviour
                             posAllowed = 0;
                             squareCounter += 2;
                         }
+                        else if (chessOnCell2)
+                        {
+                            if (script2.allowedToDestroy)
+                            {
+                                script2.chessDeleting();
+                                isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
+                                script.Relocate(hitObject.transform.position.x, pawn.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
+                                pawnSelected = false;
+                                chessSelected = false;
+                                pawnRedIndicatorsDelete = true;
+                            }
+                        }
                         else
                         {
                             squareCounter++;
                         }
                     }
-                    else 
+                    else
                     {
                         pawnSelected = false;//помечаем, что уже сняли выделение с пешки
                         chessSelected = false;
@@ -1036,35 +1068,41 @@ public class ChessMovingMain : MonoBehaviour
                     GameObject hitObject = hit.transform.gameObject;//помещаем в переменную hitObject объект в который попали
                     chessOnTheWay = false;
                     //проверяем ход по вертикали
-                    chessOnTheWayCounter = 0;
-                    value = pos - pos % 10;
-                    for (i = 1; i < 9; i++)
+                    value2 = pos - pos % 10;
+                    for (value = pos - 1; value > value2; value--)
                     {
-                        posAllowed = value + i;
-                        if(RookMoving(hitObject) == 1)
+                        posAllowed = value;
+                        if (longWalkChessMoving(hitObject, rook) == 1)
+                        {
+                            break;
+                        }
+                    }
+                    value2 = pos - pos % 10 + 9;
+                    for (value = pos + 1; value < value2; value++)
+                    {
+                        posAllowed = value;
+                        if (longWalkChessMoving(hitObject, rook) == 1)
                         {
                             break;
                         }
                     }
                     //проверяем ход по горизонтали в одну сторону
-                    chessOnTheWayCounter = 0;
                     value = pos + 10;
                     while (value < 90)
                     {
                         posAllowed = value;
-                        if (RookMoving(hitObject) == 1)
+                        if (longWalkChessMoving(hitObject, rook) == 1)
                         {
                             break;
                         }
                         value += 10;
                     }
                     //проверяем ход по горизонтали в другую сторону
-                    chessOnTheWayCounter = 0;
                     value = pos - 10;
                     while (value > 10)
                     {
                         posAllowed = value;
-                        if (RookMoving(hitObject) == 1)
+                        if (longWalkChessMoving(hitObject, rook) == 1)
                         {
                             break;
                         }
@@ -1101,28 +1139,24 @@ public class ChessMovingMain : MonoBehaviour
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 > 2)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
                     value = pos + 12;
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 < 7)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
                     value = pos - 8;
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 < 7)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
                     value = pos + 8;
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 > 2)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
 
@@ -1130,28 +1164,24 @@ public class ChessMovingMain : MonoBehaviour
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 > 1)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
                     value = pos + 21;
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 < 8)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
                     value = pos + 19;
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 < 8)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
                     value = pos - 19;
                     value2 = pos % 10;
                     if (value > 10 && value < 89 && value2 > 1)
                     {
-                        posString = value.ToString();
                         HorseMoving(hitObject);
                     }
                     AnyChessIndicatorsDelete();//удаляем все индикаторы
@@ -1188,9 +1218,9 @@ public class ChessMovingMain : MonoBehaviour
                         posAllowed = v;
                         posString = posAllowed.ToString();
                         value2 = v % 10;
-                        if(value2 > 0)
+                        if (value2 > 0)
                         {
-                            if (ElephantMoving(hitObject) == 1)
+                            if (longWalkChessMoving(hitObject, elephant) == 1)
                             {
                                 indicator3 = 1;
                                 break;
@@ -1210,7 +1240,7 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = v % 10;
                         if (value2 < 9)
                         {
-                            if (ElephantMoving(hitObject) == 1)
+                            if (longWalkChessMoving(hitObject, elephant) == 1)
                             {
                                 indicator3 = 1;
                                 break;
@@ -1230,7 +1260,7 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = v % 10;
                         if (value2 > 0)
                         {
-                            if (ElephantMoving(hitObject) == 1)
+                            if (longWalkChessMoving(hitObject, elephant) == 1)
                             {
                                 indicator3 = 1;
                                 break;
@@ -1250,7 +1280,7 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = v % 10;
                         if (value2 < 9)
                         {
-                            if (ElephantMoving(hitObject) == 1)
+                            if (longWalkChessMoving(hitObject, elephant) == 1)
                             {
                                 indicator3 = 1;
                                 break;
@@ -1297,37 +1327,9 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = v % 10;
                         if (value2 > 0)
                         {
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
+                            if (longWalkChessMoving(hitObject, queen) == 1)
                             {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                chessOnCell2 = script2.chessOnCell;
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    queenSelected = false;
-                                    chessSelected = false;
-                                    posAllowed = 0;
-                                    break;
-                                }
-                                else if (chessOnCell2)
-                                {
-                                    if (isWhiteMove = script2.isChessColourBlack())
-                                    {
-                                        script2.chessDeleting();
-                                        isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                        script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                        queenSelected = false;
-                                        chessSelected = false;
-                                    }
-                                }
-                                else
-                                {
-                                    chessOnTheWay = false;
-                                    break;
-                                }
+                                break;
                             }
                         }
                         else
@@ -1343,37 +1345,9 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = v % 10;
                         if (value2 < 9)
                         {
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
+                            if (longWalkChessMoving(hitObject, queen) == 1)
                             {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                chessOnCell2 = script2.chessOnCell;
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    queenSelected = false;
-                                    chessSelected = false;
-                                    posAllowed = 0;
-                                    break;
-                                }
-                                else if (chessOnCell2)
-                                {
-                                    if (isWhiteMove = script2.isChessColourBlack())
-                                    {
-                                        script2.chessDeleting();
-                                        isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                        script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                        queenSelected = false;
-                                        chessSelected = false;
-                                    }
-                                }
-                                else
-                                {
-                                    chessOnTheWay = false;
-                                    break;
-                                }
+                                break;
                             }
                         }
                         else
@@ -1389,37 +1363,9 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = v % 10;
                         if (value2 > 0)
                         {
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
+                            if (longWalkChessMoving(hitObject, queen) == 1)
                             {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                chessOnCell2 = script2.chessOnCell;
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    queenSelected = false;
-                                    chessSelected = false;
-                                    posAllowed = 0;
-                                    break;
-                                }
-                                else if (chessOnCell2)
-                                {
-                                    if (isWhiteMove = script2.isChessColourBlack())
-                                    {
-                                        script2.chessDeleting();
-                                        isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                        script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                        queenSelected = false;
-                                        chessSelected = false;
-                                    }
-                                }
-                                else
-                                {
-                                    chessOnTheWay = false;
-                                    break;
-                                }
+                                break;
                             }
                         }
                         else
@@ -1435,37 +1381,9 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = v % 10;
                         if (value2 < 9)
                         {
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
+                            if (longWalkChessMoving(hitObject, queen) == 1)
                             {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                chessOnCell2 = script2.chessOnCell;
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    queenSelected = false;
-                                    chessSelected = false;
-                                    posAllowed = 0;
-                                    break;
-                                }
-                                else if (chessOnCell2)
-                                {
-                                    if (isWhiteMove = script2.isChessColourBlack())
-                                    {
-                                        script2.chessDeleting();
-                                        isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                        script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                        queenSelected = false;
-                                        chessSelected = false;
-                                    }
-                                }
-                                else
-                                {
-                                    chessOnTheWay = false;
-                                    break;
-                                }
+                                break;
                             }
                         }
                         else
@@ -1474,43 +1392,25 @@ public class ChessMovingMain : MonoBehaviour
                         }
                     }
                     //проверяем на ход ладьи
-                    value = pos - pos % 10;
-                    for (int i = 1; i < 9; i++)
-                    {
 
-                        posAllowed = value + i;
+                    value2 = pos - pos % 10;
+                    for (value = pos - 1; value > value2; value--)
+                    {
+                        posAllowed = value;
                         posString = posAllowed.ToString();
-                        if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
+                        if (longWalkChessMoving(hitObject, queen) == 1)
                         {
-                            cellIndicator = hitObject;
-                            script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                            chessOnCell2 = script2.chessOnCell;
-                            thisAllowedToMove = script2.allowedToMove;
-                            if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                            {
-                                isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                queenSelected = false;
-                                chessSelected = false;
-                                posAllowed = 0;
-                                break;
-                            }
-                            else if (chessOnCell2)
-                            {
-                                if (isWhiteMove = script2.isChessColourBlack())
-                                {
-                                    script2.chessDeleting();
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    queenSelected = false;
-                                    chessSelected = false;
-                                }
-                            }
-                            else if (chessOnTheWay)
-                            {
-                                chessOnTheWay = false;
-                                break;
-                            }
+                            break;
+                        }
+                    }
+                    value2 = pos - pos % 10 + 9;
+                    for (value = pos + 1; value < value2; value++)
+                    {
+                        posAllowed = value;
+                        posString = posAllowed.ToString();
+                        if (longWalkChessMoving(hitObject, queen) == 1)
+                        {
+                            break;
                         }
                     }
                     //проверяем ход по горизонтали в одну сторону
@@ -1519,37 +1419,9 @@ public class ChessMovingMain : MonoBehaviour
                     {
                         posAllowed = value;
                         posString = posAllowed.ToString();
-                        if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку
+                        if (longWalkChessMoving(hitObject, queen) == 1)
                         {
-                            cellIndicator = hitObject;
-                            script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                            chessOnCell2 = script2.chessOnCell;
-                            thisAllowedToMove = script2.allowedToMove;
-                            if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                            {
-                                isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                queenSelected = false;
-                                chessSelected = false;
-                                posAllowed = 0;
-                                break;
-                            }
-                            else if (chessOnCell2)
-                            {
-                                if (isWhiteMove = script2.isChessColourBlack())
-                                {
-                                    script2.chessDeleting();
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    queenSelected = false;
-                                    chessSelected = false;
-                                }
-                            }
-                            else if (chessOnTheWay)
-                            {
-                                chessOnTheWay = false;
-                                break;
-                            }
+                            break;
                         }
                         value += 10;
                     }
@@ -1559,37 +1431,9 @@ public class ChessMovingMain : MonoBehaviour
                     {
                         posAllowed = value;
                         posString = posAllowed.ToString();
-                        if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку по правилам
+                        if (longWalkChessMoving(hitObject, queen) == 1)
                         {
-                            cellIndicator = hitObject;
-                            script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                            chessOnCell2 = script2.chessOnCell;
-                            thisAllowedToMove = script2.allowedToMove;
-                            if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                            {
-                                isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                queenSelected = false;
-                                chessSelected = false;
-                                posAllowed = 0;
-                                break;
-                            }
-                            else if (chessOnCell2)
-                            {
-                                if (isWhiteMove = script2.isChessColourBlack())
-                                {
-                                    script2.chessDeleting();
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, queen.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    queenSelected = false;
-                                    chessSelected = false;
-                                }
-                            }
-                            else if (chessOnTheWay)
-                            {
-                                chessOnTheWay = false;
-                                break;
-                            }
+                            break;
                         }
                         value -= 10;
                     }
@@ -1626,20 +1470,7 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = value % 10;
                         if (value > 10 && value < 89 && value2 < 9 && value2 > 0)
                         {
-                            posString = value.ToString();
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку по правилам
-                            {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, king.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    kingSelected = false;
-                                    chessSelected = false;
-                                }
-                            }
+                            KingMoving(hitObject);
                         }
                     }
                     for (int i = -10; i < 11; i += 20)
@@ -1647,20 +1478,7 @@ public class ChessMovingMain : MonoBehaviour
                         value = pos + i;
                         if (value > 10 && value < 89)
                         {
-                            posString = value.ToString();
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку по правилам
-                            {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, king.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    kingSelected = false;
-                                    chessSelected = false;
-                                }
-                            }
+                            KingMoving(hitObject);
                         }
                     }
                     for (int i = -11; i < 12; i += 22)
@@ -1669,20 +1487,7 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = value % 10;
                         if (value > 10 && value < 89 && value2 < 9 && value2 > 0)
                         {
-                            posString = value.ToString();
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку по правилам
-                            {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, king.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    kingSelected = false;
-                                    chessSelected = false;
-                                }
-                            }
+                            KingMoving(hitObject);
                         }
                     }
                     for (int i = -9; i < 10; i += 18)
@@ -1691,20 +1496,7 @@ public class ChessMovingMain : MonoBehaviour
                         value2 = value % 10;
                         if (value > 10 && value < 89 && value2 < 9 && value2 > 0)
                         {
-                            posString = value.ToString();
-                            if (hitObject.tag == posString)//проверяем разрешён ли ход на нажатую клетку по правилам
-                            {
-                                cellIndicator = hitObject;
-                                script2 = cellIndicator.GetComponent<Detectors>();//получаем доступ к скрипту
-                                thisAllowedToMove = script2.allowedToMove;
-                                if (thisAllowedToMove)//проверяем свободна ли от других фигур клетка в которую хотим сделать ход
-                                {
-                                    isWhiteMove = !isWhiteMove;//смена цвета фигур которым разрешён ход
-                                    script.Relocate(hitObject.transform.position.x, king.transform.position.y, hitObject.transform.position.z);//перемещаем объект по координатам объекта на который нажали
-                                    kingSelected = false;
-                                    chessSelected = false;
-                                }
-                            }
+                            KingMoving(hitObject);
                         }
                     }
 
